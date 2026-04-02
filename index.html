@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;600;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #1a1a1a; font-family: 'Oswald', sans-serif; color: #fff; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .top-bar { width: 500px; background: #222; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .lbl { font-size: 10px; font-weight: 700; letter-spacing: 2px; color: #D62B2B; text-transform: uppercase; margin-bottom: 2px; }
+  .input-row { display: flex; gap: 8px; }
+  .input-row input { flex: 1; background: #111; border: 2px solid #D62B2B; color: #fff; font-family: 'Oswald', sans-serif; font-size: 15px; padding: 9px 12px; outline: none; }
+  .red-btn { background: #D62B2B; border: none; color: #fff; font-family: 'Oswald', sans-serif; font-size: 13px; font-weight: 700; padding: 9px 16px; cursor: pointer; }
+  .red-btn:hover { background: #b82222; }
+  .hint { font-size: 12px; color: #777; }
+  .hint span { color: #ccc; }
+  canvas { display: block; width: 500px; height: 500px; }
+  .panel { width: 500px; background: #222; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tab { background: #333; border: none; border-bottom: 2px solid transparent; color: #aaa; font-family: 'Oswald', sans-serif; font-size: 12px; padding: 6px 14px; cursor: pointer; }
+  .tab.active { color: #fff; border-bottom-color: #D62B2B; background: #2a2a2a; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .grey-btn { background: #333; border: 1px solid #444; color: #fff; font-family: 'Oswald', sans-serif; font-size: 12px; padding: 7px 14px; cursor: pointer; }
+  .grey-btn:hover { border-color: #D62B2B; }
+  .out-btn { background: none; border: 1px solid #D62B2B; color: #D62B2B; font-family: 'Oswald', sans-serif; font-size: 11px; font-weight: 700; padding: 7px 14px; cursor: pointer; }
+  .out-btn:hover { background: #D62B2B; color: #fff; }
+  .danger-btn { background: none; border: 1px solid #444; color: #666; font-family: 'Oswald', sans-serif; font-size: 11px; padding: 7px 12px; cursor: pointer; }
+  .danger-btn:hover { border-color: #D62B2B; color: #D62B2B; }
+  select { background: #333; border: 1px solid #444; color: #fff; font-family: 'Oswald', sans-serif; font-size: 12px; padding: 7px 8px; outline: none; }
+  .slider-row { display: flex; align-items: center; gap: 6px; }
+  .slider-row span { font-size: 11px; color: #aaa; white-space: nowrap; }
+  .video-panel { width: 500px; background: #1e1e1e; border: 1px solid #333; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .video-options { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .status-bar { width: 500px; font-size: 12px; padding: 8px 12px; background: #111; border-left: 3px solid #D62B2B; display: none; }
+  .status-bar.visible { display: block; }
+  .progress { width: 500px; height: 4px; background: #333; display: none; }
+  .progress-fill { height: 100%; background: #D62B2B; width: 0%; transition: width 0.3s; }
+  .dl-btn { width: 500px; background: #D62B2B; border: none; color: #fff; font-family: 'Oswald', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 13px; cursor: pointer; }
+  .dl-btn:hover { background: #b82222; }
+  .dl-btn:disabled { background: #555; cursor: not-allowed; }
+  .dl-single { width: 500px; background: #333; border: none; color: #fff; font-family: 'Oswald', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 11px; cursor: pointer; }
+  .dl-single:hover { background: #444; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="lbl">✏ Tekst voor huidig frame</div>
+  <div class="input-row">
+    <input type="text" id="txt" placeholder="Typ tekst en druk op Toepassen..." autocomplete="off">
+    <button class="red-btn" id="apply-btn">✓ Toepassen</button>
+  </div>
+  <div class="hint">Frame <span id="cur-num">1</span>: <span id="cur-txt">🍔 Premium Smashed Burgers</span></div>
+</div>
+
+<canvas id="cv" width="1080" height="1080"></canvas>
+
+<div class="panel">
+  <div class="lbl">Frames</div>
+  <div class="tabs" id="tabs"></div>
+  <div class="actions">
+    <label class="grey-btn" for="media-input" id="media-label">📷 Foto/Video</label>
+    <input type="file" id="media-input" accept="image/*,video/*" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;">
+    <label class="grey-btn" for="logo-input">🔴 Logo</label>
+    <input type="file" id="logo-input" accept="image/*" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;">
+    <select id="pos">
+      <option value="bottom">Tekst onderaan</option>
+      <option value="top">Tekst bovenaan</option>
+      <option value="center">Tekst midden</option>
+    </select>
+    <div class="slider-row">
+      <span>Grootte</span>
+      <input type="range" id="bar-size" min="80" max="300" value="160" step="10" style="width:80px;accent-color:#D62B2B;">
+      <span id="bar-size-val">160px</span>
+    </div>
+    <button class="grey-btn" id="toggle-bar-btn">🚫 Geen tekst</button>
+    <button class="out-btn" id="add-btn">+ Frame</button>
+    <button class="danger-btn" id="rm-btn">× Verwijder</button>
+  </div>
+</div>
+
+<div class="video-panel">
+  <div class="lbl">🎬 Foto's samenvoegen tot video</div>
+  <div class="video-options">
+    <div class="slider-row">
+      <span>Duur per foto</span>
+      <input type="range" id="frame-dur" min="1" max="8" value="3" step="0.5" style="width:80px;accent-color:#D62B2B;">
+      <span id="frame-dur-val">3s</span>
+    </div>
+    <div class="slider-row">
+      <span>Overgang</span>
+      <input type="range" id="trans-dur" min="0" max="1.5" value="0.5" step="0.1" style="width:60px;accent-color:#D62B2B;">
+      <span id="trans-dur-val">0.5s</span>
+    </div>
+    <select id="transition">
+      <option value="fade">Fade</option>
+      <option value="cut">Hard cut</option>
+      <option value="slide-left">Slide links</option>
+      <option value="slide-right">Slide rechts</option>
+      <option value="slide-up">Slide omhoog</option>
+      <option value="slide-down">Slide omlaag</option>
+      <option value="zoom-in">Zoom in</option>
+      <option value="zoom-out">Zoom uit</option>
+      <option value="blur">Blur fade</option>
+      <option value="checker">Schaakbord</option>
+    </select>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button class="dl-btn" id="make-video-btn" style="flex:1;">🎬 Maak video</button>
+    <button class="dl-btn" id="preview-btn" style="flex:1;background:#333;">▶ Preview</button>
+  </div>
+</div>
+
+<div class="status-bar" id="status-bar"><span id="status-txt"></span></div>
+<div class="progress" id="prog"><div class="progress-fill" id="pf"></div></div>
+<button class="dl-btn" id="dlb">⬇ Download alle frames (ZIP)</button>
+<button class="dl-single" id="dls">⬇ Download huidig frame (PNG)</button>
+<button class="dl-single" id="dlv" style="background:#555;display:block;">⬇ Download video (geen video geladen)</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(function(){
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const W = 1080, H = 1080, SQ = 60;
+  const oc = document.createElement('canvas'); oc.width=W; oc.height=H;
+  const octx = oc.getContext('2d');
+
+  let cur = 0, logoImg = null, showBar = true, animId = null;
+  let previewRunning = false;
+  let frames = [{ text: '🍔 Premium Smashed Burgers', img: null, video: null, videoBlob: null }];
+
+  // ── media input ───────────────────────────────────────
+  document.getElementById('media-input').addEventListener('change', function(e) {
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    const idx = cur;
+    const isVid = file.type.startsWith('video/') || /\.(mp4|webm|mov|avi|mkv|gif)$/i.test(file.name);
+    if(isVid) {
+      frames[idx].videoBlob = file;
+      frames[idx].img = null;
+      const v = document.createElement('video');
+      v.muted=true; v.playsInline=true; v.loop=false;
+      v.addEventListener('loadeddata', function() {
+        frames[idx].video = v;
+        buildTabs(); updateDlBtns();
+        if(cur===idx) startLoop(idx);
+      });
+      v.src = URL.createObjectURL(file);
+      v.load();
+    } else {
+      frames[idx].videoBlob = null; frames[idx].video = null;
+      const r = new FileReader();
+      r.onload = function(ev) {
+        const img = new Image();
+        img.onload = function() {
+          frames[idx].img = img;
+          buildTabs(); updateDlBtns();
+          if(cur===idx) { stopLoop(); renderToCtx(ctx,idx); }
+        };
+        img.src = ev.target.result;
+      };
+      r.readAsDataURL(file);
+    }
+    e.target.value = '';
+  });
+
+  document.getElementById('logo-input').addEventListener('change', function(e) {
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    const r = new FileReader();
+    r.onload = function(ev) {
+      const img = new Image();
+      img.onload = function() { logoImg = img; renderToCtx(ctx,cur); };
+      img.src = ev.target.result;
+    };
+    r.readAsDataURL(file);
+    e.target.value = '';
+  });
+
+  // ── UI ────────────────────────────────────────────────
+  function updateHint() {
+    document.getElementById('cur-num').textContent = cur+1;
+    document.getElementById('cur-txt').textContent = frames[cur].text||'—';
+    document.getElementById('txt').value = frames[cur].text||'';
+  }
+
+  function updateDlBtns() {
+    const f = frames[cur];
+    const hasVid = !!(f && (f.video || f.videoBlob));
+    const btn = document.getElementById('dlv');
+    btn.textContent = hasVid ? '⬇ Download huidige video' : '⬇ Download video (geen video in frame '+(cur+1)+')';
+    btn.style.background = hasVid ? '#D62B2B' : '#555';
+    btn.disabled = !hasVid;
+  }
+
+  function buildTabs() {
+    const el = document.getElementById('tabs'); el.innerHTML='';
+    frames.forEach(function(f,i) {
+      const b = document.createElement('button');
+      b.className='tab'+(i===cur?' active':'');
+      b.textContent='Frame '+(i+1)+(f.video?' 🎬':f.img?' 📷':'');
+      b.addEventListener('click', function() { stopAll(); cur=i; buildTabs(); updateHint(); updateDlBtns(); startLoop(cur); });
+      el.appendChild(b);
+    });
+    document.getElementById('cur-num').textContent = cur+1;
+  }
+
+  function setStatus(txt, on) {
+    document.getElementById('status-txt').textContent = txt;
+    document.getElementById('status-bar').className = 'status-bar'+(on?' visible':'');
+  }
+
+  function setProgress(v) {
+    const p = document.getElementById('prog');
+    p.style.display = v>0 ? 'block':'none';
+    document.getElementById('pf').style.width = (v*100)+'%';
+  }
+
+  // ── draw ──────────────────────────────────────────────
+  function renderToCtx(c, i) {
+    c.clearRect(0,0,W,H);
+    drawCheckerOn(c);
+    if(frames[i] && frames[i].video) drawMediaOn(c, frames[i].video);
+    else if(frames[i] && frames[i].img) drawMediaOn(c, frames[i].img);
+    if(showBar) drawBarOn(c, frames[i]?frames[i].text:'', i);
+    drawLogoOn(c);
+  }
+
+  function drawCheckerOn(c) {
+    for(var r=0;r<H/SQ;r++) for(var col=0;col<W/SQ;col++) {
+      c.fillStyle=(r+col)%2===0?'#fff':'#111';
+      c.fillRect(col*SQ,r*SQ,SQ,SQ);
+    }
+  }
+
+  function drawMediaOn(c, src) {
+    var m=SQ, s=W-m*2;
+    var sw=src.videoWidth||src.naturalWidth||W;
+    var sh=src.videoHeight||src.naturalHeight||H;
+    var sc=Math.max(s/sw,s/sh);
+    c.save(); c.beginPath(); c.rect(m,m,s,s); c.clip();
+    c.drawImage(src, m+(s-sw*sc)/2, m+(s-sh*sc)/2, sw*sc, sh*sc);
+    c.restore();
+    for(var r=0;r<H/SQ;r++) for(var col=0;col<W/SQ;col++)
+      if((r===1||r===H/SQ-2||col===1||col===W/SQ-2)&&(r+col)%2!==0) {
+        c.fillStyle='rgba(17,17,17,0.75)'; c.fillRect(col*SQ,r*SQ,SQ,SQ);
+      }
+  }
+
+  function drawBarOn(c, txt, idx) {
+    var bH=parseInt(document.getElementById('bar-size').value);
+    var pos=document.getElementById('pos').value;
+    var bY=pos==='top'?SQ:pos==='center'?(H-bH)/2:H-bH-SQ;
+    c.fillStyle='rgba(17,17,17,0.88)'; c.fillRect(SQ*1.5,bY,W-SQ*3,bH);
+    c.fillStyle='#D62B2B';
+    c.fillRect(SQ*1.5,bY,W-SQ*3,6);
+    c.fillRect(SQ*1.5,bY+bH-6,W-SQ*3,6);
+    c.textAlign='center'; c.textBaseline='middle';
+    c.fillStyle='#D62B2B'; c.font="600 28px 'Oswald',sans-serif";
+    c.fillText('SMASH PATAT',W/2,bY+30);
+    var fs=Math.min(96,Math.floor(900/Math.max((txt||'').length,1)*1.8));
+    c.fillStyle='#fff'; c.font="700 "+fs+"px 'Bebas Neue',Impact,sans-serif";
+    c.fillText(txt||'',W/2,bY+bH/2+12,W-SQ*4);
+    var dR=12,dG=36,tot=frames.length;
+    var dx=W/2-(tot*dR*2+(tot-1)*(dG-dR*2))/2+dR;
+    for(var i=0;i<tot;i++) {
+      c.beginPath(); c.arc(dx,H-SQ*0.6,dR,0,Math.PI*2);
+      c.fillStyle=i===idx?'#D62B2B':'rgba(255,255,255,0.3)';
+      c.fill(); dx+=dG;
+    }
+  }
+
+  function drawLogoOn(c) {
+    if(!logoImg) return;
+    var s=160, x=W-SQ*1.5-s, y=SQ*1.5;
+    c.save(); c.beginPath(); c.arc(x+s/2,y+s/2,s/2,0,Math.PI*2); c.clip();
+    c.drawImage(logoImg,x,y,s,s); c.restore();
+  }
+
+  function startLoop(i) {
+    if(animId) cancelAnimationFrame(animId);
+    if(frames[i] && frames[i].video) {
+      frames[i].video.currentTime=0;
+      frames[i].video.play().catch(function(){});
+      var loop=function(){ renderToCtx(ctx,i); animId=requestAnimationFrame(loop); };
+      animId=requestAnimationFrame(loop);
+    } else { renderToCtx(ctx,i); animId=null; }
+  }
+
+  function stopLoop() {
+    if(animId){ cancelAnimationFrame(animId); animId=null; }
+    frames.forEach(function(f){ if(f.video){ f.video.pause(); f.video.currentTime=0; }});
+  }
+
+  function stopAll() { previewRunning=false; stopLoop(); }
+
+  function ease(t){ return t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2; }
+
+  function applyTransition(c, oc2, oc2x, ci, ni, t, tr) {
+    var e = ease(t);
+    var oc1 = document.createElement('canvas'); oc1.width=W; oc1.height=H;
+    var oc1x = oc1.getContext('2d');
+    renderToCtx(oc1x, ci);
+    renderToCtx(oc2x, ni);
+
+    c.clearRect(0,0,W,H);
+
+    if(tr==='fade'){
+      c.drawImage(oc1,0,0);
+      c.globalAlpha=e; c.drawImage(oc2,0,0); c.globalAlpha=1;
+
+    } else if(tr==='slide-left'){
+      var off=Math.round(e*W);
+      c.drawImage(oc1,-off,0); c.drawImage(oc2,W-off,0);
+
+    } else if(tr==='slide-right'){
+      var off=Math.round(e*W);
+      c.drawImage(oc1,off,0); c.drawImage(oc2,off-W,0);
+
+    } else if(tr==='slide-up'){
+      var off=Math.round(e*H);
+      c.drawImage(oc1,0,-off); c.drawImage(oc2,0,H-off);
+
+    } else if(tr==='slide-down'){
+      var off=Math.round(e*H);
+      c.drawImage(oc1,0,off); c.drawImage(oc2,0,off-H);
+
+    } else if(tr==='zoom-in'){
+      c.drawImage(oc1,0,0);
+      var sc=1+e*0.3;
+      c.save();
+      c.translate(W/2,H/2); c.scale(sc,sc); c.translate(-W/2,-H/2);
+      c.globalAlpha=e; c.drawImage(oc2,0,0); c.globalAlpha=1;
+      c.restore();
+
+    } else if(tr==='zoom-out'){
+      var sc=1.3-e*0.3;
+      c.save();
+      c.translate(W/2,H/2); c.scale(sc,sc); c.translate(-W/2,-H/2);
+      c.drawImage(oc1,0,0); c.globalAlpha=e;
+      c.restore();
+      c.save();
+      c.translate(W/2,H/2); c.scale(1,1); c.translate(-W/2,-H/2);
+      c.drawImage(oc2,0,0); c.globalAlpha=1;
+      c.restore();
+
+    } else if(tr==='blur'){
+      c.drawImage(oc1,0,0);
+      // simuleer blur via meerdere semi-transparante verschoven frames
+      for(var b=1;b<=6;b++){
+        var spread=b*e*8;
+        c.globalAlpha=e*0.15;
+        c.drawImage(oc2,-spread,-spread,W+spread*2,H+spread*2);
+      }
+      c.globalAlpha=e*0.7; c.drawImage(oc2,0,0); c.globalAlpha=1;
+
+    } else if(tr==='checker'){
+      c.drawImage(oc1,0,0);
+      var sq=Math.round(SQ*1.5);
+      var cols2=Math.ceil(W/sq), rows2=Math.ceil(H/sq);
+      var total=cols2*rows2;
+      var revealed=Math.round(e*total);
+      // sorteer blokjes op random volgorde (seeded)
+      if(!applyTransition._checkerOrder || applyTransition._checkerTotal!==total){
+        var arr=[]; for(var k=0;k<total;k++) arr.push(k);
+        // shuffle
+        for(var k=arr.length-1;k>0;k--){ var j2=Math.floor(Math.abs(Math.sin(k*9301+49297))*arr.length); var tmp=arr[k]; arr[k]=arr[j2]; arr[j2]=tmp; }
+        applyTransition._checkerOrder=arr; applyTransition._checkerTotal=total;
+      }
+      c.save();
+      for(var k=0;k<revealed;k++){
+        var idx2=applyTransition._checkerOrder[k];
+        var col2=idx2%cols2, row2=Math.floor(idx2/cols2);
+        c.drawImage(oc2, col2*sq, row2*sq, sq, sq, col2*sq, row2*sq, sq, sq);
+      }
+      c.restore();
+    }
+  }
+
+  function tick(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+
+  // ── slideshow preview ─────────────────────────────────
+  async function runPreview() {
+    const fps=30;
+    const allF = frames.filter(function(f){ return f.img||f.video; });
+    while(previewRunning) {
+      for(var i=0; i<allF.length&&previewRunning; i++) {
+        var ci=frames.indexOf(allF[i]), ni=frames.indexOf(allF[(i+1)%allF.length]);
+        var dur=parseFloat(document.getElementById('frame-dur').value);
+        var td=parseFloat(document.getElementById('trans-dur').value);
+        var tr=document.getElementById('transition').value;
+        var tf=Math.round(td*fps), hf=Math.round((dur-td)*fps);
+        if(allF[i].video) {
+          allF[i].video.currentTime=0; await allF[i].video.play().catch(function(){});
+          await new Promise(function(res){
+            var vl=function(){ if(!previewRunning||allF[i].video.ended){res();return;} renderToCtx(ctx,ci); requestAnimationFrame(vl); };
+            requestAnimationFrame(vl); allF[i].video.onended=res;
+          });
+          allF[i].video.pause();
+        } else {
+          for(var f=0;f<hf&&previewRunning;f++){ renderToCtx(ctx,ci); await tick(1000/fps); }
+        }
+        if(!previewRunning) break;
+        if(tr==='cut'){ renderToCtx(ctx,ni); await tick(1000/fps); }
+        else for(var f=0;f<tf&&previewRunning;f++){
+          var t=f/tf;
+          applyTransition(ctx,oc,octx,ci,ni,t,tr);
+          await tick(1000/fps);
+        }
+      }
+    }
+    document.getElementById('preview-btn').textContent='▶ Preview';
+    document.getElementById('preview-btn').style.background='#333';
+    startLoop(cur);
+  }
+
+  // ── events ────────────────────────────────────────────
+  document.getElementById('apply-btn').addEventListener('click', function() {
+    frames[cur].text=document.getElementById('txt').value; updateHint(); buildTabs(); renderToCtx(ctx,cur);
+  });
+  document.getElementById('txt').addEventListener('keydown', function(e) {
+    if(e.key==='Enter'){ frames[cur].text=document.getElementById('txt').value; updateHint(); buildTabs(); renderToCtx(ctx,cur); }
+  });
+  document.getElementById('pos').addEventListener('change', function(){ renderToCtx(ctx,cur); });
+  document.getElementById('bar-size').addEventListener('input', function(){ document.getElementById('bar-size-val').textContent=this.value+'px'; renderToCtx(ctx,cur); });
+  document.getElementById('frame-dur').addEventListener('input', function(){ document.getElementById('frame-dur-val').textContent=this.value+'s'; });
+  document.getElementById('trans-dur').addEventListener('input', function(){ document.getElementById('trans-dur-val').textContent=this.value+'s'; });
+
+  document.getElementById('toggle-bar-btn').addEventListener('click', function() {
+    showBar=!showBar; this.textContent=showBar?'🚫 Geen tekst':'✅ Tekst tonen'; renderToCtx(ctx,cur);
+  });
+  document.getElementById('add-btn').addEventListener('click', function() {
+    frames.push({text:'🍔 Nieuwe tekst...',img:null,video:null,videoBlob:null});
+    cur=frames.length-1; stopAll(); buildTabs(); updateHint(); updateDlBtns(); renderToCtx(ctx,cur);
+  });
+  document.getElementById('rm-btn').addEventListener('click', function() {
+    if(frames.length<=1) return;
+    stopAll(); frames.splice(cur,1); cur=Math.min(cur,frames.length-1);
+    buildTabs(); updateHint(); updateDlBtns(); startLoop(cur);
+  });
+
+  document.getElementById('preview-btn').addEventListener('click', function() {
+    if(previewRunning){ previewRunning=false; this.textContent='▶ Preview'; this.style.background='#333'; stopAll(); startLoop(cur); return; }
+    var mf=frames.filter(function(f){ return f.img||f.video; });
+    if(mf.length<1){ alert('Voeg minstens 1 frame met media toe.'); return; }
+    if(mf.length===1){
+      // enkel 1 frame — gewoon afspelen
+      stopAll(); startLoop(frames.indexOf(mf[0])); return;
+    }
+    previewRunning=true; this.textContent='⏹ Stop'; this.style.background='#D62B2B';
+    stopLoop(); runPreview();
+  });
+
+  document.getElementById('make-video-btn').addEventListener('click', async function() {
+    var mf=frames.filter(function(f){ return f.img||f.video; });
+    if(mf.length<1){ alert('Voeg minstens 1 frame toe.'); return; }
+    if(mf.length===1 && mf[0].video && mf[0].videoBlob) { 
+      document.getElementById('dlv').click(); return; 
+    }
+    var btn=this; btn.disabled=true; stopAll();
+    var fps=30, dur=parseFloat(document.getElementById('frame-dur').value);
+    var td=parseFloat(document.getElementById('trans-dur').value);
+    var tr=document.getElementById('transition').value;
+    var tf=Math.round(td*fps), hf=Math.round((dur-td)*fps);
+    var mime=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(function(m){ return MediaRecorder.isTypeSupported(m); })||'video/webm';
+    var stream=cv.captureStream(fps);
+    var recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:5000000});
+    var chunks=[]; recorder.ondataavailable=function(e){ if(e.data&&e.data.size>0) chunks.push(e.data); };
+    renderToCtx(ctx,frames.indexOf(mf[0])); await tick(100); recorder.start(100);
+    for(var i=0;i<mf.length;i++){
+      setProgress((i+0.5)/mf.length); setStatus('Frame '+(i+1)+' van '+mf.length+' verwerken...', true);
+      var ci=frames.indexOf(mf[i]), ni=frames.indexOf(mf[(i+1)%mf.length]);
+      if(mf[i].video){
+        mf[i].video.currentTime=0; await mf[i].video.play().catch(function(){});
+        await new Promise(function(res){ mf[i].video.onended=function(){ res(); }; var vl=function(){ renderToCtx(ctx,ci); if(!mf[i].video.ended) requestAnimationFrame(vl); }; requestAnimationFrame(vl); });
+        mf[i].video.pause();
+      } else {
+        for(var f=0;f<hf;f++){ renderToCtx(ctx,ci); await tick(1000/fps); }
+      }
+      if(i===mf.length-1) break;
+        if(tr==='cut'){ renderToCtx(ctx,ni); await tick(1000/fps); }
+        else for(var f=0;f<tf;f++){
+          var t=f/tf;
+          applyTransition(ctx,oc,octx,ci,ni,t,tr);
+          await tick(1000/fps);
+        }
+      setProgress((i+1)/mf.length);
+    }
+    if(recorder.state!=='inactive') recorder.stop();
+    await new Promise(function(r){ recorder.onstop=r; setTimeout(r,1000); });
+    var blob=new Blob(chunks,{type:mime});
+    var a=document.createElement('a'); a.download='smashpatat_slideshow.webm'; a.href=URL.createObjectURL(blob);
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setStatus('✅ Video klaar!', true); setTimeout(function(){ setStatus('',false); },3000);
+    setProgress(0); btn.disabled=false; startLoop(cur);
+  });
+
+  document.getElementById('dls').addEventListener('click', function() {
+    renderToCtx(ctx,cur);
+    var a=document.createElement('a'); a.download='smashpatat_frame_'+(cur+1)+'.png'; a.href=cv.toDataURL('image/png');
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  });
+
+  document.getElementById('dlv').addEventListener('click', async function() {
+    var f=frames[cur];
+    if(!f||!f.video){ alert('Geen video in frame '+(cur+1)); return; }
+    var btn=this; btn.disabled=true;
+    stopAll();
+    setStatus('⏺ Video opnemen met opmaak...', true);
+
+    var vid=f.video;
+    vid.pause(); vid.currentTime=0;
+    await tick(300);
+
+    var mime=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(function(m){ return MediaRecorder.isTypeSupported(m); })||'video/webm';
+    var stream=cv.captureStream(30);
+    var recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:6000000});
+    var chunks=[]; 
+    recorder.ondataavailable=function(e){ if(e.data&&e.data.size>0) chunks.push(e.data); };
+
+    renderToCtx(ctx,cur);
+    await tick(100);
+    recorder.start(100);
+    await vid.play().catch(function(){});
+
+    await new Promise(function(resolve){
+      vid.onended=function(){ 
+        setTimeout(function(){ 
+          if(recorder.state!=='inactive') recorder.stop(); 
+          resolve(); 
+        }, 300); 
+      };
+      var loop=function(){ 
+        renderToCtx(ctx,cur); 
+        if(!vid.ended&&!vid.paused) requestAnimationFrame(loop); 
+      };
+      requestAnimationFrame(loop);
+      setTimeout(function(){ 
+        if(recorder.state!=='inactive'){ vid.pause(); recorder.stop(); resolve(); } 
+      }, 120000);
+    });
+
+    await new Promise(function(r){ recorder.onstop=r; setTimeout(r,1000); });
+
+    if(chunks.length===0){ 
+      setStatus('❌ Opname mislukt', true); 
+      setTimeout(function(){ setStatus('',false); },3000);
+      btn.disabled=false; startLoop(cur); return; 
+    }
+
+    var blob=new Blob(chunks,{type:mime});
+    var a=document.createElement('a'); 
+    a.download='smashpatat_video_'+(cur+1)+'.webm'; 
+    a.href=URL.createObjectURL(blob);
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setStatus('✅ Video met opmaak gedownload!', true); 
+    setTimeout(function(){ setStatus('',false); },3000);
+    btn.disabled=false; startLoop(cur);
+  });
+
+  document.getElementById('dlb').addEventListener('click', async function() {
+    var btn=this; btn.disabled=true; stopAll();
+    var zip=new JSZip();
+    for(var i=0;i<frames.length;i++){
+      setProgress((i+0.5)/frames.length);
+      if(frames[i].video){ zip.file('smashpatat_frame_'+(i+1)+'.txt','Video frame — gebruik de video download knop.'); }
+      else { renderToCtx(ctx,i); await tick(100); zip.file('smashpatat_frame_'+(i+1)+'.png',cv.toDataURL('image/png').split(',')[1],{base64:true}); }
+      setProgress((i+1)/frames.length);
+    }
+    var blob=await zip.generateAsync({type:'blob'});
+    var a=document.createElement('a'); a.download='smashpatat_frames.zip'; a.href=URL.createObjectURL(blob);
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    btn.disabled=false; setProgress(0); startLoop(cur);
+  });
+
+  // ── init ──────────────────────────────────────────────
+  buildTabs(); updateHint(); updateDlBtns(); renderToCtx(ctx,0);
+})();
+</script>
+</body>
+</html>
