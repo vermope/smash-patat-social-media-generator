@@ -74,6 +74,7 @@
       <span id="bar-size-val">160px</span>
     </div>
     <button class="grey-btn" id="toggle-bar-btn">🚫 Geen tekst</button>
+    <button class="grey-btn" id="toggle-polaroid-btn">📷 Polaroid AAN</button>
     <button class="out-btn" id="add-btn">+ Frame</button>
     <button class="danger-btn" id="rm-btn">× Verwijder</button>
   </div>
@@ -122,11 +123,11 @@
 (function(){
   const cv = document.getElementById('cv');
   const ctx = cv.getContext('2d');
-  const W = 1080, H = 1080, SQ = 60;
+  const W = 1080, H = 1080, SQ = 30;
   const oc = document.createElement('canvas'); oc.width=W; oc.height=H;
   const octx = oc.getContext('2d');
 
-  let cur = 0, logoImg = null, showBar = true, animId = null;
+  let cur = 0, logoImg = null, showBar = true, animId = null, polaroidMode = false;
   let previewRunning = false;
   let frames = [{ text: '🍔 Premium Smashed Burgers', img: null, video: null, videoBlob: null }];
 
@@ -219,12 +220,91 @@
 
   // ── draw ──────────────────────────────────────────────
   function renderToCtx(c, i) {
+    if(polaroidMode) { renderPolaroid(c, i); return; }
     c.clearRect(0,0,W,H);
     drawCheckerOn(c);
     if(frames[i] && frames[i].video) drawMediaOn(c, frames[i].video);
     else if(frames[i] && frames[i].img) drawMediaOn(c, frames[i].img);
     if(showBar) drawBarOn(c, frames[i]?frames[i].text:'', i);
     drawLogoOn(c);
+  }
+
+  function renderPolaroid(c, i) {
+    c.clearRect(0,0,W,H);
+    // — schaakbord achtergrond —
+    var sq2=30;
+    for(var r=0;r<H/sq2;r++) for(var col=0;col<W/sq2;col++) {
+      c.fillStyle=(r+col)%2===0?'#fff':'#111';
+      c.fillRect(col*sq2,r*sq2,sq2,sq2);
+    }
+
+    // — polaroid kaart —
+    var pad=80;
+    var botPad=showBar?210:60;    // extra ruimte onderaan voor witte tekst-strip
+    var cardX=pad, cardY=pad;
+    var cardW=W-pad*2, cardH=H-pad*2;
+    var imgPad=40;     // witte rand rondom foto
+    var imgX=cardX+imgPad, imgY=cardY+imgPad;
+    var imgW=cardW-imgPad*2, imgH=cardH-imgPad*2-botPad;
+
+    // schaduw
+    c.save();
+    c.shadowColor='rgba(0,0,0,0.45)';
+    c.shadowBlur=40; c.shadowOffsetX=8; c.shadowOffsetY=12;
+    c.fillStyle='#fff';
+    c.fillRect(cardX,cardY,cardW,cardH);
+    c.restore();
+
+    // witte kaart
+    c.fillStyle='#fff'; c.fillRect(cardX,cardY,cardW,cardH);
+
+    // foto (geclipped)
+    var src = (frames[i]&&frames[i].video) ? frames[i].video : (frames[i]&&frames[i].img ? frames[i].img : null);
+    if(src) {
+      var sw=src.videoWidth||src.naturalWidth||W;
+      var sh=src.videoHeight||src.naturalHeight||H;
+      var sc=Math.max(imgW/sw,imgH/sh);
+      c.save(); c.beginPath(); c.rect(imgX,imgY,imgW,imgH); c.clip();
+      c.drawImage(src, imgX+(imgW-sw*sc)/2, imgY+(imgH-sh*sc)/2, sw*sc, sh*sc);
+      c.restore();
+    } else {
+      // placeholder
+      c.fillStyle='#eee'; c.fillRect(imgX,imgY,imgW,imgH);
+      c.fillStyle='#bbb'; c.font="bold 48px 'Oswald',sans-serif"; c.textAlign='center'; c.textBaseline='middle';
+      c.fillText('Voeg foto toe',W/2,imgY+imgH/2);
+    }
+
+    // tekst-strip onderaan polaroid
+    if(showBar) {
+      var stripY=cardY+cardH-botPad+imgPad/2;
+      c.textAlign='center'; c.textBaseline='middle';
+      c.fillStyle='#D62B2B'; c.font="700 32px 'Oswald',sans-serif";
+      c.fillText('SMASH PATAT', W/2, stripY+32);
+      var txt=frames[i]?frames[i].text:'';
+      var fs2=Math.min(80, Math.floor(900/Math.max((txt||'').length,1)*1.6));
+      c.fillStyle='#111'; c.font="700 "+fs2+"px 'Bebas Neue',Impact,sans-serif";
+      c.fillText(txt||'', W/2, stripY+32+50+fs2/2, cardW-imgPad*2);
+    }
+
+    // rode stip bovenaan (decoratief, zie site)
+    var dotR=28;
+    c.beginPath(); c.arc(W/2, cardY-dotR+10, dotR, 0, Math.PI*2);
+    c.fillStyle='#D62B2B'; c.fill();
+
+    // logo rechtsboven op kaart
+    if(logoImg) {
+      var ls=100, lx=cardX+cardW-ls-imgPad, ly=cardY+imgPad;
+      c.save(); c.beginPath(); c.arc(lx+ls/2,ly+ls/2,ls/2,0,Math.PI*2); c.clip();
+      c.drawImage(logoImg,lx,ly,ls,ls); c.restore();
+    }
+
+    // stippen indicator
+    var dR=10,dG=28,tot=frames.length;
+    var dx=W/2-(tot*dR*2+(tot-1)*(dG-dR*2))/2+dR;
+    for(var k=0;k<tot;k++){
+      c.beginPath(); c.arc(dx,cardY+cardH-18,dR,0,Math.PI*2);
+      c.fillStyle=k===i?'#D62B2B':'rgba(0,0,0,0.2)'; c.fill(); dx+=dG;
+    }
   }
 
   function drawCheckerOn(c) {
@@ -429,6 +509,14 @@
 
   document.getElementById('toggle-bar-btn').addEventListener('click', function() {
     showBar=!showBar; this.textContent=showBar?'🚫 Geen tekst':'✅ Tekst tonen'; renderToCtx(ctx,cur);
+  });
+  document.getElementById('toggle-polaroid-btn').addEventListener('click', function() {
+    polaroidMode=!polaroidMode;
+    this.textContent=polaroidMode?'📷 Polaroid UIT':'📷 Polaroid AAN';
+    this.style.borderBottom=polaroidMode?'2px solid #D62B2B':'';
+    this.style.color=polaroidMode?'#fff':'';
+    this.style.background=polaroidMode?'#2a2a2a':'';
+    renderToCtx(ctx,cur);
   });
   document.getElementById('add-btn').addEventListener('click', function() {
     frames.push({text:'🍔 Nieuwe tekst...',img:null,video:null,videoBlob:null});
